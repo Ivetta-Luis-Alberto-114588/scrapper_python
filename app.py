@@ -145,6 +145,60 @@ class WebScraper:
         logger.info(f"Scraping completado. Se procesaron {len(self.urls_visitadas)} páginas.")
         return self.datos_paginas
     
+    def generar_markdown(self, nombre_archivo_base):
+        """Genera un archivo Markdown con los datos extraídos de las páginas."""
+        if not self.datos_paginas:
+            logger.warning("No hay datos para generar el archivo Markdown.")
+            return False
+        
+        # Crear nombre de archivo con extensión .md
+        nombre_markdown = f"{os.path.splitext(nombre_archivo_base)[0]}.md"
+        ruta_markdown = os.path.join(self.directorio_salida, nombre_markdown)
+        
+        try:
+            with open(ruta_markdown, 'w', encoding='utf-8') as md_file:
+                # Título del documento
+                md_file.write("# Resultado del Scraping Web\n\n")
+                
+                # Información de parámetros
+                md_file.write(f"- **URL inicial**: {self.url_inicial}\n")
+                md_file.write(f"- **Profundidad máxima**: {self.profundidad_maxima}\n")
+                md_file.write(f"- **Total de páginas procesadas**: {len(self.datos_paginas)}\n\n")
+                
+                # Agregar datos de cada página
+                for i, pagina in enumerate(self.datos_paginas, 1):
+                    md_file.write(f"## {i}. {pagina['titulo']}\n\n")
+                    md_file.write(f"**URL**: {pagina['url']}\n\n")
+                    
+                    # Encabezados
+                    if pagina['encabezados']:
+                        for nivel, texto in pagina['encabezados']:
+                            # Los encabezados en markdown son con # (nivel+1 porque ya usamos ## para el título de la página)
+                            md_file.write(f"{'#' * (nivel+1)} {texto}\n\n")
+                    
+                    # Párrafos
+                    for parrafo in pagina['parrafos']:
+                        md_file.write(f"{parrafo}\n\n")
+                    
+                    # Imágenes
+                    if pagina['imagenes']:
+                        md_file.write("### Imágenes encontradas:\n\n")
+                        
+                        for url_img in pagina['imagenes']:
+                            md_file.write(f"- {url_img}\n")
+                        
+                        md_file.write("\n")
+                    
+                    # Separador entre páginas
+                    md_file.write("---\n\n")
+            
+            logger.info(f"Archivo Markdown generado correctamente: {ruta_markdown}")
+            return True
+        
+        except Exception as e:
+            logger.error(f"Error al generar el archivo Markdown: {str(e)}")
+            return False
+    
     def generar_pdf(self, nombre_archivo='resultado_scraping.pdf'):
         """Genera un PDF con los datos extraídos de las páginas."""
         if not self.datos_paginas:
@@ -232,6 +286,13 @@ class WebScraper:
         except Exception as e:
             logger.error(f"Error al generar el PDF: {str(e)}")
             return False
+            
+    def exportar_resultados(self, nombre_archivo='resultado_scraping.pdf'):
+        """Exporta los resultados tanto en PDF como en Markdown."""
+        resultado_pdf = self.generar_pdf(nombre_archivo)
+        resultado_md = self.generar_markdown(nombre_archivo)
+        
+        return resultado_pdf and resultado_md
 
 def main():
     # Configurar los argumentos de línea de comandos
@@ -247,9 +308,12 @@ def main():
         # Crear e iniciar el scraper
         scraper = WebScraper(args.url, args.profundidad, args.output)
         scraper.scrapear()
-        scraper.generar_pdf(args.filename)
+        scraper.exportar_resultados(args.filename)
         
-        print(f"Scraping completado. PDF generado en: {os.path.join(args.output, args.filename)}")
+        nombre_base = os.path.splitext(args.filename)[0]
+        print(f"Scraping completado.")
+        print(f"PDF generado en: {os.path.join(args.output, args.filename)}")
+        print(f"Markdown generado en: {os.path.join(args.output, nombre_base + '.md')}")
         
     except Exception as e:
         print(f"Error: {str(e)}")
