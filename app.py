@@ -9,6 +9,8 @@ from io import BytesIO
 import argparse
 import os
 import logging
+import time
+from datetime import timedelta
 
 # Configurar logging
 logging.basicConfig(
@@ -32,6 +34,11 @@ class WebScraper:
         self.directorio_salida = directorio_salida
         self.urls_visitadas = set()
         self.datos_paginas = []
+        
+        # Variables para almacenar tiempos de ejecución
+        self.tiempo_scraping = 0
+        self.tiempo_pdf = 0
+        self.tiempo_markdown = 0
         
         # Validar URL inicial
         if not self._es_url_valida(url_inicial):
@@ -104,6 +111,7 @@ class WebScraper:
     
     def scrapear(self):
         """Realiza el scraping comenzando desde la URL inicial hasta la profundidad especificada."""
+        tiempo_inicio = time.time()
         logger.info(f"Iniciando scraping desde {self.url_inicial} con profundidad {self.profundidad_maxima}")
         
         # Cola de URLs para procesar: (url, profundidad)
@@ -142,7 +150,12 @@ class WebScraper:
             except Exception as e:
                 logger.error(f"Error al procesar {url_actual}: {str(e)}")
         
-        logger.info(f"Scraping completado. Se procesaron {len(self.urls_visitadas)} páginas.")
+        tiempo_fin = time.time()
+        tiempo_total = tiempo_fin - tiempo_inicio
+        tiempo_formateado = str(timedelta(seconds=round(tiempo_total)))
+        
+        logger.info(f"Scraping completado. Se procesaron {len(self.urls_visitadas)} páginas en {tiempo_formateado}.")
+        self.tiempo_scraping = tiempo_total
         return self.datos_paginas
     
     def generar_markdown(self, nombre_archivo_base):
@@ -150,6 +163,8 @@ class WebScraper:
         if not self.datos_paginas:
             logger.warning("No hay datos para generar el archivo Markdown.")
             return False
+        
+        tiempo_inicio = time.time()
         
         # Crear nombre de archivo con extensión .md
         nombre_markdown = f"{os.path.splitext(nombre_archivo_base)[0]}.md"
@@ -192,7 +207,12 @@ class WebScraper:
                     # Separador entre páginas
                     md_file.write("---\n\n")
             
-            logger.info(f"Archivo Markdown generado correctamente: {ruta_markdown}")
+            tiempo_fin = time.time()
+            tiempo_total = tiempo_fin - tiempo_inicio
+            tiempo_formateado = str(timedelta(seconds=round(tiempo_total)))
+            
+            logger.info(f"Archivo Markdown generado correctamente: {ruta_markdown} en {tiempo_formateado}")
+            self.tiempo_markdown = tiempo_total
             return True
         
         except Exception as e:
@@ -204,6 +224,8 @@ class WebScraper:
         if not self.datos_paginas:
             logger.warning("No hay datos para generar el PDF.")
             return False
+        
+        tiempo_inicio = time.time()
         
         ruta_completa = os.path.join(self.directorio_salida, nombre_archivo)
         doc = SimpleDocTemplate(ruta_completa, pagesize=A4)
@@ -281,7 +303,13 @@ class WebScraper:
         # Generar el PDF
         try:
             doc.build(elementos)
-            logger.info(f"PDF generado correctamente: {ruta_completa}")
+            
+            tiempo_fin = time.time()
+            tiempo_total = tiempo_fin - tiempo_inicio
+            tiempo_formateado = str(timedelta(seconds=round(tiempo_total)))
+            
+            logger.info(f"PDF generado correctamente: {ruta_completa} en {tiempo_formateado}")
+            self.tiempo_pdf = tiempo_total
             return True
         except Exception as e:
             logger.error(f"Error al generar el PDF: {str(e)}")
@@ -311,6 +339,21 @@ def main():
         scraper.exportar_resultados(args.filename)
         
         nombre_base = os.path.splitext(args.filename)[0]
+        
+        # Convertir segundos a minutos:segundos
+        tiempo_scraping_min = scraper.tiempo_scraping / 60
+        tiempo_pdf_min = scraper.tiempo_pdf / 60
+        tiempo_markdown_min = scraper.tiempo_markdown / 60
+        tiempo_total_min = (scraper.tiempo_scraping + scraper.tiempo_pdf + scraper.tiempo_markdown) / 60
+        
+        # Formatear como minutos y segundos
+        print("\n===== RESUMEN DE TIEMPOS =====")
+        print(f"Tiempo de scraping: {tiempo_scraping_min:.2f} minutos")
+        print(f"Tiempo de generación PDF: {tiempo_pdf_min:.2f} minutos")
+        print(f"Tiempo de generación Markdown: {tiempo_markdown_min:.2f} minutos")
+        print(f"TIEMPO TOTAL: {tiempo_total_min:.2f} minutos")
+        print("=============================\n")
+        
         print(f"Scraping completado.")
         print(f"PDF generado en: {os.path.join(args.output, args.filename)}")
         print(f"Markdown generado en: {os.path.join(args.output, nombre_base + '.md')}")

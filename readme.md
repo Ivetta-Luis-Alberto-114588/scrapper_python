@@ -1,6 +1,15 @@
+python -m venv env
+
+cd env
+
+cd scritps
+
+activate
+
+
 pip **install** requests beautifulsoup4 reportlab
 
-
+ctrl shift p --> select interpreter  --> seleccionar el interprete de python del entorno
 
 python app.py https://ejemplo.com -p 2 -o carpeta_salida -f resultado.pdf
 
